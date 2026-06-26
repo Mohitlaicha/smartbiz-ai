@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Plus, Search, Eye, Trash2, ShoppingCart, Receipt, X, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,18 +26,25 @@ export default function Sales() {
     items: [{ product_id: "", product_name: "", quantity: 1, unit_price: 0, subtotal: 0 }]
   });
 
-  const load = async () => {
-    try {
-      const [s, c, p] = await Promise.all([
-        base44.entities.Sale.list("-created_date"),
-        base44.entities.Customer.list(),
-        base44.entities.Product.list(),
-      ]);
-      setSales(s);
-      setCustomers(c);
-      setProducts(p);
-    } finally { setLoading(false); }
-  };
+const load = async () => {
+  try {
+    setLoading(true);
+
+    const [salesRes, customersRes, productsRes] = await Promise.all([
+      api.get("/sales"),
+      api.get("/customers"),
+      api.get("/products"),
+    ]);
+
+    setSales(salesRes.data);
+    setCustomers(customersRes.data);
+    setProducts(productsRes.data);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { load(); }, []);
 
@@ -53,7 +60,7 @@ export default function Sales() {
     const newItems = [...form.items];
     newItems[index][field] = value;
     if (field === "product_id") {
-      const product = products.find(p => p.id === value);
+      const product = products.find(p => p._id === value);
       if (product) {
         newItems[index].product_name = product.name;
         newItems[index].unit_price = product.price;
@@ -81,39 +88,37 @@ export default function Sales() {
     if (!form.customer_name.trim() || form.items.some(i => !i.product_id)) return;
     setSaving(true);
     try {
-      const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
-      const sale = await base44.entities.Sale.create({
-        ...form,
-        total_amount: totalAmount,
-        invoice_number: invoiceNumber,
-        status: "completed",
-      });
+      // const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+      const response = await api.post("/sales", {
+  ...form,
+  total_amount: totalAmount,
+});
+
+const sale = response.data;
 
       // Deduct inventory
       for (const item of form.items) {
-        const product = products.find(p => p.id === item.product_id);
+        const product = products.find(p => p._id === item.product_id);
         if (product) {
-          await base44.entities.Product.update(product.id, {
-            stock_quantity: Math.max(0, (product.stock_quantity || 0) - item.quantity)
-          });
+          await api.put(`/products/${product._id}`, {
+    stock_quantity:
+      Math.max(0, (product.stock_quantity || 0) - item.quantity),
+});
         }
       }
 
       // Update customer spending
       if (form.customer_id) {
-        const customer = customers.find(c => c.id === form.customer_id);
+        const customer = customers.find(c => c._id === form.customer_id);
         if (customer) {
-          await base44.entities.Customer.update(customer.id, {
-            total_spent: (customer.total_spent || 0) + totalAmount
-          });
+          await api.put(`/customers/${customer._id}`, {
+    total_spent:
+      (customer.total_spent || 0) + totalAmount,
+});
         }
       }
 
-      await base44.entities.ActivityLog.create({
-        action: `New sale: ${invoiceNumber} - $${totalAmount.toFixed(2)} to ${form.customer_name}`,
-        entity_type: "sale",
-        entity_id: sale.id,
-      });
+      
 
       setDialogOpen(false);
       load();
@@ -123,9 +128,8 @@ export default function Sales() {
 
   const handleDelete = async (s) => {
     if (!confirm("Delete this sale?")) return;
-    await base44.entities.Sale.delete(s.id);
-    await base44.entities.ActivityLog.create({ action: `Deleted sale: ${s.invoice_number}`, entity_type: "sale" });
-    load();
+    await api.delete(`/sales/${s._id}`);
+   load();
     toast({ title: "Sale deleted" });
   };
 
@@ -177,12 +181,12 @@ export default function Sales() {
               </thead>
               <tbody>
                 {filtered.map((s) => (
-                  <motion.tr key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <motion.tr key={s._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <span className="text-sm font-mono font-medium text-violet-600">{s.invoice_number || "—"}</span>
                     </td>
                     <td className="px-5 py-3.5 text-sm text-slate-700">{s.customer_name}</td>
-                    <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">{moment(s.created_date).format("MMM D, YYYY")}</td>
+                    <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">{moment(s.createdAt).format("MMM D, YYYY")}</td>
                     <td className="px-5 py-3.5 text-sm text-slate-500 capitalize hidden sm:table-cell">{s.payment_method?.replace("_", " ")}</td>
                     <td className="px-5 py-3.5 text-sm font-semibold text-slate-900 text-right">${s.total_amount?.toLocaleString()}</td>
                     <td className="px-5 py-3.5 text-right">
@@ -207,11 +211,11 @@ export default function Sales() {
             <div>
               <Label>Customer *</Label>
               <Select value={form.customer_id} onValueChange={(v) => {
-                const c = customers.find(c => c.id === v);
+                const c = customers.find(c => c._id === v);
                 setForm({ ...form, customer_id: v, customer_name: c?.name || "" });
               }}>
                 <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-                <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{customers.map(c => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -223,7 +227,7 @@ export default function Sales() {
                     <div className="flex-1">
                       <Select value={item.product_id} onValueChange={(v) => updateItem(i, "product_id", v)}>
                         <SelectTrigger className="text-sm"><SelectValue placeholder="Product" /></SelectTrigger>
-                        <SelectContent>{products.filter(p => p.status === "active").map(p => <SelectItem key={p.id} value={p.id}>{p.name} (${p.price})</SelectItem>)}</SelectContent>
+                        <SelectContent>{products.filter(p => p.status === "active").map(p => <SelectItem key={p._id} value={p._id}>{p.name} (${p.price})</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="w-20">
@@ -273,7 +277,7 @@ export default function Sales() {
             <div className="space-y-4 mt-2">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-slate-400 text-xs">Customer</p><p className="font-medium">{viewSale.customer_name}</p></div>
-                <div><p className="text-slate-400 text-xs">Date</p><p className="font-medium">{moment(viewSale.created_date).format("MMM D, YYYY")}</p></div>
+                <div><p className="text-slate-400 text-xs">Date</p><p className="font-medium">{moment(viewSale.createdAt).format("MMM D, YYYY")}</p></div>
                 <div><p className="text-slate-400 text-xs">Payment</p><p className="font-medium capitalize">{viewSale.payment_method?.replace("_", " ")}</p></div>
                 <div><p className="text-slate-400 text-xs">Status</p><p className="font-medium capitalize">{viewSale.status}</p></div>
               </div>

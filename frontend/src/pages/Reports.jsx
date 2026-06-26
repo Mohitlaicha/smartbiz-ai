@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { api } from "@/api/client";
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { TrendingUp, DollarSign, Users, Package, FileText } from 'lucide-react';
@@ -20,16 +20,31 @@ function SectionTitle({ title, subtitle }) {
 }
 
 export default function Reports() {
-  const { data: invoices = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => base44.entities.Invoice.list('-created_date', 200) });
-  const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: () => base44.entities.Customer.list('-created_date', 200) });
-  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: () => base44.entities.Expense.list('-created_date', 200) });
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: () => base44.entities.Product.list('-created_date', 200) });
+  const { data: invoices = [] } = useQuery({
+  queryKey: ["invoices"],
+  queryFn: async () => {
+    const res = await api.get("/invoices");
+    return res.data;
+  },
+});
+  const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: async () => {
+    const res = await api.get("/customers");
+    return res.data;
+}, });
+  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: async () => {
+    const res = await api.get("/expenses");
+    return res.data;
+}, });
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: async () => {
+    const res = await api.get("/products");
+    return res.data;
+}, });
 
   // Monthly revenue vs expenses
   const monthlyData = MONTHS.map((month, idx) => {
-    const revenue = invoices.filter(i => i.status === 'paid' && new Date(i.created_date).getMonth() === idx)
+    const revenue = invoices.filter(i => i.status === 'paid' && new Date(i.createdAt).getMonth() === idx)
       .reduce((s, i) => s + (i.amount || 0), 0);
-    const expense = expenses.filter(e => new Date(e.created_date).getMonth() === idx)
+    const expense = expenses.filter(e => new Date(e.createdAt).getMonth() === idx)
       .reduce((s, e) => s + (e.amount || 0), 0);
     return { month, revenue, expense, profit: revenue - expense };
   });
@@ -37,7 +52,7 @@ export default function Reports() {
   // Customer growth by month
   const customerGrowth = MONTHS.map((month, idx) => ({
     month,
-    customers: customers.filter(c => new Date(c.created_date).getMonth() <= idx).length,
+    customers: customers.filter(c => new Date(c.createdAt).getMonth() <= idx).length,
   }));
 
   // Expense by category

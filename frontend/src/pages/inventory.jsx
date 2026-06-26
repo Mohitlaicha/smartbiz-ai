@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { businessAPI } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Package, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,23 +39,25 @@ export default function Inventory() {
   const [form, setForm] = useState(initialForm);
   const queryClient = useQueryClient();
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => base44.entities.Product.list('-created_date'),
-  });
+const { data: response, isLoading } = useQuery({
+  queryKey: ["products"],
+  queryFn: businessAPI.getProducts,
+});
+
+const products = response?.data || [];
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Product.create(data),
+    mutationFn: businessAPI.createProduct,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeDialog(); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Product.update(id, data),
+    mutationFn: ({ id, data }) => businessAPI.updateProduct(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeDialog(); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Product.delete(id),
+    mutationFn: businessAPI.deleteProduct,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
   });
 
@@ -82,7 +84,8 @@ export default function Inventory() {
       cost: form.cost ? parseFloat(form.cost) : undefined,
     };
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data });
+      updateMutation.mutate({ id: editingProduct._id || editingProduct.id, data,
+});
     } else {
       createMutation.mutate(data);
     }

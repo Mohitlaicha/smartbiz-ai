@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { api } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, CheckSquare, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,23 +41,35 @@ export default function Tasks() {
   const [form, setForm] = useState(initialForm);
   const queryClient = useQueryClient();
 
-  const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => base44.entities.Task.list('-created_date'),
-  });
+ const { data: tasks = [], isLoading } = useQuery({
+  queryKey: ["tasks"],
+  queryFn: async () => {
+    const res = await api.get("/tasks");
+    return res.data;
+  },
+});
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
+    mutationFn: async (data) => {
+  const res = await api.post("/tasks", data);
+  return res.data;
+},
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks'] }); closeDialog(); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    mutationFn: async ({ id, data }) => {
+  const res = await api.put(`/tasks/${id}`, data);
+  return res.data;
+},
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks'] }); closeDialog(); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Task.delete(id),
+    mutationFn: async (id) => {
+  const res = await api.delete(`/tasks/${id}`);
+  return res.data;
+},
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 
@@ -119,7 +131,7 @@ export default function Tasks() {
                 const status = statusConfig[task.status] || statusConfig.todo;
                 const priority = priorityConfig[task.priority] || priorityConfig.medium;
                 return (
-                  <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  <motion.div key={task._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="p-4 rounded-xl border border-border/50 hover:bg-muted/30 transition-all"
                   >
                     <div className="flex items-start gap-3">
@@ -141,8 +153,8 @@ export default function Tasks() {
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(task)}>Edit</DropdownMenuItem>
-                            {task.status !== 'done' && <DropdownMenuItem onClick={() => updateMutation.mutate({ id: task.id, data: { status: 'done' } })}>Mark Done</DropdownMenuItem>}
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteMutation.mutate(task.id)}>Delete</DropdownMenuItem>
+                            {task.status !== 'done' && <DropdownMenuItem onClick={() => updateMutation.mutate({ id: task._id, data: { status: 'done' } })}>Mark Done</DropdownMenuItem>}
+                            <DropdownMenuItem className="text-destructive" onClick={() => deleteMutation.mutate(task._id)}>Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

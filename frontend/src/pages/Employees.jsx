@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { businessAPI } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Users, MoreHorizontal, Briefcase, Building2, FolderOpen, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -51,23 +51,25 @@ export default function Employees() {
   const [projectInput, setProjectInput] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ['employees'],
-    queryFn: () => base44.entities.Employee.list('-created_date'),
-  });
+const { data: response, isLoading } = useQuery({
+  queryKey: ["employees"],
+  queryFn: businessAPI.getEmployees,
+});
+
+const employees = response?.data || [];
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Employee.create(data),
+   mutationFn: (data) => businessAPI.createEmployee(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); closeDialog(); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Employee.update(id, data),
+    mutationFn: ({ id, data }) => businessAPI.updateEmployee(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employees'] }); closeDialog(); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Employee.delete(id),
+    mutationFn: (id) => businessAPI.deleteEmployee(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees'] }),
   });
 
