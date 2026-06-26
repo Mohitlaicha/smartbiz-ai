@@ -1,0 +1,74 @@
+{
+  "name": "Sale",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Reference to customer"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name at time of sale"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Products sold in this transaction"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total sale amount"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "credit_card",
+        "debit_card",
+        "bank_transfer",
+        "other"
+      ],
+      "default": "cash"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "refunded",
+        "cancelled"
+      ],
+      "default": "completed"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "Auto-generated invoice number"
+    }
+  },
+  "required": [
+    "customer_name",
+    "total_amount"
+  ]
+}

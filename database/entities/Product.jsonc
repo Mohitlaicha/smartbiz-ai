@@ -1,0 +1,58 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "electronics",
+        "clothing",
+        "food",
+        "office",
+        "software",
+        "furniture",
+        "tools",
+        "other"
+      ],
+      "default": "other"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 0,
+      "description": "Units in stock"
+    },
+    "low_stock_threshold": {
+      "type": "number",
+      "default": 10,
+      "description": "Alert when stock falls below this"
+    },
+    "price": {
+      "type": "number",
+      "description": "Selling price"
+    },
+    "cost": {
+      "type": "number",
+      "description": "Cost / purchase price"
+    },
+    "supplier": {
+      "type": "string",
+      "description": "Supplier name"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Product SKU code"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "price",
+    "quantity"
+  ]
+}

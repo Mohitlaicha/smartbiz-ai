@@ -1,0 +1,37 @@
+{
+  "name": "ActivityLog",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "Action performed"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "product",
+        "sale",
+        "task",
+        "system"
+      ],
+      "description": "Which module the action relates to"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the related entity"
+    },
+    "details": {
+      "type": "string",
+      "description": "Additional details about the action"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the user who performed the action"
+    }
+  },
+  "required": [
+    "action",
+    "entity_type"
+  ]
+}

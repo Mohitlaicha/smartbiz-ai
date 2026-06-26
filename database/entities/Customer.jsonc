@@ -1,0 +1,52 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Customer full name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Customer phone number"
+    },
+    "company": {
+      "type": "string",
+      "description": "Customer company name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "lead"
+      ],
+      "default": "lead",
+      "description": "Customer status"
+    },
+    "total_spent": {
+      "type": "number",
+      "default": 0,
+      "description": "Total amount spent by customer"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the customer"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for categorizing the customer"
+    }
+  },
+  "required": [
+    "name",
+    "email"
+  ]
+}

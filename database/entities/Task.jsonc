@@ -1,0 +1,62 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "in_progress",
+        "review",
+        "done"
+      ],
+      "default": "todo",
+      "description": "Task status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Task priority"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Task due date"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Person assigned to the task"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "marketing",
+        "sales",
+        "operations",
+        "finance",
+        "product",
+        "support",
+        "other"
+      ],
+      "default": "other",
+      "description": "Task category"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

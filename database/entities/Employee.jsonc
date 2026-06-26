@@ -1,0 +1,71 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Employee full name"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "description": "Job title / role"
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "engineering",
+        "marketing",
+        "sales",
+        "finance",
+        "operations",
+        "design",
+        "hr",
+        "support",
+        "management"
+      ],
+      "default": "operations"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "on_leave",
+        "remote",
+        "inactive"
+      ],
+      "default": "active"
+    },
+    "salary": {
+      "type": "number",
+      "description": "Monthly salary"
+    },
+    "attendance_rate": {
+      "type": "number",
+      "description": "Attendance percentage (0-100)"
+    },
+    "active_projects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "avatar_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "role",
+    "department"
+  ]
+}

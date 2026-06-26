@@ -1,0 +1,50 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Expense title"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Expense amount"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "rent",
+        "utilities",
+        "salaries",
+        "marketing",
+        "software",
+        "supplies",
+        "travel",
+        "other"
+      ],
+      "default": "other",
+      "description": "Expense category"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expense date"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "Vendor name"
+    },
+    "receipt_url": {
+      "type": "string",
+      "description": "Receipt file URL"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the expense"
+    }
+  },
+  "required": [
+    "title",
+    "amount"
+  ]
+}
