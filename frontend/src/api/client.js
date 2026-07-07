@@ -23,7 +23,7 @@ addCustomer: (data) => api.post("/customers", data),
 updateCustomer: (id, data) => api.put(`/customers/${id}`, data),
 deleteCustomer: (id) => api.delete(`/customers/${id}`),
 getCustomers: () => api.get("/customers"),
-
+getTasks: () => api.get("/tasks"),
 getEmployees: () => api.get("/employees"),
 
 createEmployee: (data) =>

@@ -14,11 +14,13 @@ import {
   Package,
   UserCheck,
   BarChart2,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
+
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/customers", icon: Users, label: "Customers" },
   { path: "/invoices", icon: FileText, label: "Invoices" },
@@ -26,6 +28,7 @@ const navItems = [
   { path: "/tasks", icon: CheckSquare, label: "Tasks" },
   { path: "/expenses", icon: DollarSign, label: "Expenses" },
   { path: "/team", icon: UserCheck, label: "Team" },
+  { path: "/sales", icon: ShoppingCart, label: "Sales" },
   { path: "/reports", icon: BarChart2, label: "Reports" },
   { path: "/ai-advisor", icon: Bot, label: "AI Advisor" },
 ];

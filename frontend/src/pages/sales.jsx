@@ -9,6 +9,15 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import moment from "moment";
+items: [
+  {
+    product_id: "",
+    product_name: "",
+    quantity: 1,
+    unit_price: 0,
+    subtotal: 0,
+  },
+]
 
 export default function Sales() {
   const [sales, setSales] = useState([]);
@@ -22,9 +31,20 @@ export default function Sales() {
   const { toast } = useToast();
 
   const [form, setForm] = useState({
-    customer_id: "", customer_name: "", payment_method: "cash", notes: "",
-    items: [{ product_id: "", product_name: "", quantity: 1, unit_price: 0, subtotal: 0 }]
-  });
+  customer_id: "",
+  customer_name: "",
+  payment_method: "cash",
+  notes: "",
+  items: [
+    {
+      product_id: "",
+      product_name: "",
+      quantity: 1,
+      unit_price: 0,
+      subtotal: 0,
+    },
+  ],
+});
 
 const load = async () => {
   try {
@@ -49,32 +69,52 @@ const load = async () => {
   useEffect(() => { load(); }, []);
 
   const openNew = () => {
-    setForm({
-      customer_id: "", customer_name: "", payment_method: "cash", notes: "",
-      items: [{ product_id: "", product_name: "", quantity: 1, unit_price: 0, subtotal: 0 }]
-    });
-    setDialogOpen(true);
-  };
+  setForm({
+    customer_id: "",
+    customer_name: "",
+    payment_method: "cash",
+    notes: "",
+    items: [
+      {
+        product_id: "",
+        product_name: "",
+        quantity: 1,
+        unit_price: 0,
+        subtotal: 0,
+      },
+    ],
+  });
+  setDialogOpen(true);
+};
 
-  const updateItem = (index, field, value) => {
-    const newItems = [...form.items];
-    newItems[index][field] = value;
-    if (field === "product_id") {
-      const product = products.find(p => p._id === value);
-      if (product) {
-        newItems[index].product_name = product.name;
-        newItems[index].unit_price = product.price;
-        newItems[index].subtotal = product.price * newItems[index].quantity;
-      }
-    }
-    if (field === "quantity") {
-      newItems[index].subtotal = newItems[index].unit_price * Number(value);
-    }
-    setForm({ ...form, items: newItems });
-  };
+ const updateItem = (index, field, value) => {
+  const newItems = [...form.items];
+
+  if (field === "product_id") {
+    const product = products.find((p) => String(p.id) === String(value));
+
+    newItems[index] = {
+      ...newItems[index],
+      product_id: String(value),
+      product_name: product?.name || "",
+      unit_price: Number(product?.price || 0),
+      subtotal: Number(product?.price || 0) * Number(newItems[index].quantity || 1),
+    };
+  } else if (field === "quantity") {
+    const qty = Number(value || 1);
+
+    newItems[index] = {
+      ...newItems[index],
+      quantity: qty,
+      subtotal: Number(newItems[index].unit_price || 0) * qty,
+    };
+  }
+
+  setForm({ ...form, items: newItems });
+};
 
   const addItem = () => {
-    setForm({ ...form, items: [...form.items, { product_id: "", product_name: "", quantity: 1, unit_price: 0, subtotal: 0 }] });
+    setForm({ ...form, items: [...form.items, { productid: "", product_name: "", quantity: 1, unit_price: 0, subtotal: 0 }] });
   };
 
   const removeItem = (index) => {
@@ -82,10 +122,16 @@ const load = async () => {
     setForm({ ...form, items: form.items.filter((_, i) => i !== index) });
   };
 
-  const totalAmount = form.items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  const totalAmount = form.items.reduce(
+  (sum, item) => sum + Number(item.subtotal || 0),
+  0
+);
 
   const handleSave = async () => {
-    if (!form.customer_name.trim() || form.items.some(i => !i.product_id)) return;
+   if (!form.customer_id || form.items.some((i) => !i.product_id)) {
+  alert("Please select customer and product");
+  return;
+}
     setSaving(true);
     try {
       // const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
@@ -98,22 +144,26 @@ const sale = response.data;
 
       // Deduct inventory
       for (const item of form.items) {
-        const product = products.find(p => p._id === item.product_id);
-        if (product) {
-          await api.put(`/products/${product._id}`, {
-    stock_quantity:
-      Math.max(0, (product.stock_quantity || 0) - item.quantity),
-});
-        }
-      }
+  const product = products.find(
+    (p) => String(p.id) === String(item.product_id)
+  );
+
+  if (product) {
+    await api.put(`/products/${product.id}`, {
+      quantity: Math.max(
+        0,
+        Number(product.quantity || 0) - Number(item.quantity)
+      ),
+    });
+  }
+}
 
       // Update customer spending
-      if (form.customer_id) {
-        const customer = customers.find(c => c._id === form.customer_id);
+      if (form.customerid) {
+        const customer = customers.find((c) => String(c.id) === String(form.customer_id));
         if (customer) {
-          await api.put(`/customers/${customer._id}`, {
-    total_spent:
-      (customer.total_spent || 0) + totalAmount,
+         await api.put(`/customers/${customer.id}`, {
+  total_spent: Number(customer.total_spent || 0) + Number(totalAmount),
 });
         }
       }
@@ -128,7 +178,7 @@ const sale = response.data;
 
   const handleDelete = async (s) => {
     if (!confirm("Delete this sale?")) return;
-    await api.delete(`/sales/${s._id}`);
+    await api.delete(`/sales/${s.id}`);
    load();
     toast({ title: "Sale deleted" });
   };
@@ -181,7 +231,7 @@ const sale = response.data;
               </thead>
               <tbody>
                 {filtered.map((s) => (
-                  <motion.tr key={s._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <motion.tr key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <span className="text-sm font-mono font-medium text-violet-600">{s.invoice_number || "—"}</span>
                     </td>
@@ -210,12 +260,17 @@ const sale = response.data;
           <div className="space-y-4 mt-2">
             <div>
               <Label>Customer *</Label>
-              <Select value={form.customer_id} onValueChange={(v) => {
-                const c = customers.find(c => c._id === v);
-                setForm({ ...form, customer_id: v, customer_name: c?.name || "" });
-              }}>
+              <Select
+  value={form.customer_id}
+  onValueChange={(v) => {
+    const c = customers.find((c) => String(c.id) === String(v));
+    setForm({ ...form, customer_id: v, customer_name: c?.name || "" });
+  }}
+>
                 <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-                <SelectContent>{customers.map(c => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{customers.map(c => <SelectItem key={String(c.id)} value={String(c.id)}>
+  {c.name}
+</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -225,10 +280,22 @@ const sale = response.data;
                 {form.items.map((item, i) => (
                   <div key={i} className="flex gap-2 items-end">
                     <div className="flex-1">
-                      <Select value={item.product_id} onValueChange={(v) => updateItem(i, "product_id", v)}>
-                        <SelectTrigger className="text-sm"><SelectValue placeholder="Product" /></SelectTrigger>
-                        <SelectContent>{products.filter(p => p.status === "active").map(p => <SelectItem key={p._id} value={p._id}>{p.name} (${p.price})</SelectItem>)}</SelectContent>
-                      </Select>
+                      <Select
+  value={item.product_id || ""}
+  onValueChange={(v) => updateItem(i, "product_id", v)}
+>
+  <SelectTrigger className="text-sm">
+    <SelectValue placeholder="Product" />
+  </SelectTrigger>
+
+  <SelectContent>
+    {products.map((p) => (
+      <SelectItem key={String(p.id)} value={String(p.id)}>
+        {p.name} (${Number(p.price || 0).toFixed(2)})
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
                     </div>
                     <div className="w-20">
                       <Input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", Number(e.target.value))} className="text-sm" />
@@ -262,7 +329,7 @@ const sale = response.data;
               <span className="text-2xl font-bold text-slate-900">${totalAmount.toFixed(2)}</span>
             </div>
 
-            <Button onClick={handleSave} disabled={saving || !form.customer_name || form.items.some(i => !i.product_id)} className="w-full bg-violet-600 hover:bg-violet-700">
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-violet-600 hover:bg-violet-700">
               {saving ? "Processing..." : "Complete Sale"}
             </Button>
           </div>

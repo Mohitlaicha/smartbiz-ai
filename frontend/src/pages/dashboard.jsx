@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+
 import {
   DollarSign,
   Users,
@@ -42,8 +43,18 @@ export default function Dashboard() {
   const products = productsRes?.data || [];
 
   // until backend is ready
-  const tasks = [];
-  const employees = [];
+  const { data: tasksRes } = useQuery({
+  queryKey: ["tasks"],
+  queryFn: businessAPI.getTasks,
+});
+
+const { data: employeesRes } = useQuery({
+  queryKey: ["employees"],
+  queryFn: businessAPI.getEmployees,
+});
+
+const tasks = tasksRes?.data || [];
+const employees = employeesRes?.data || [];
 
   const totalRevenue = invoices
     .filter((i) => (i.status || "").toLowerCase() === "paid")

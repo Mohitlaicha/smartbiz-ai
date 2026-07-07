@@ -17,6 +17,7 @@ import Expenses from "@/pages/Expenses.jsx";
 import Reports from "@/pages/Reports.jsx";
 import Employees from "@/pages/Employees.jsx";
 import Sales from "@/pages/sales.jsx";
+import AIAdvisor from "@/pages/AIAdvisor.jsx";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/sales" element={<Sales />} />
+            <Route path="/ai-advisor" element={<AIAdvisor />} />
           </Route>
         </Routes>
       </BrowserRouter>
