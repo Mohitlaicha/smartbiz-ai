@@ -38,7 +38,57 @@ export default function Reports() {
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: async () => {
     const res = await api.get("/products");
     return res.data;
-}, });
+}, });const invoicesQuery = useQuery({
+  queryKey: ["invoices"],
+  queryFn: async () => {
+    const res = await api.get("/invoices");
+    return res.data;
+  },
+});
+
+const customersQuery = useQuery({
+  queryKey: ["customers"],
+  queryFn: async () => {
+    const res = await api.get("/customers");
+    return res.data;
+  },
+});
+
+const expensesQuery = useQuery({
+  queryKey: ["expenses"],
+  queryFn: async () => {
+    const res = await api.get("/expenses");
+    return res.data;
+  },
+});
+
+const productsQuery = useQuery({
+  queryKey: ["products"],
+  queryFn: async () => {
+    const res = await api.get("/products");
+    return res.data;
+  },
+});
+
+if (
+  invoicesQuery.isLoading ||
+  customersQuery.isLoading ||
+  expensesQuery.isLoading ||
+  productsQuery.isLoading
+) {
+  return <div className="p-6">Loading reports...</div>;
+}
+
+if (
+  invoicesQuery.error ||
+  customersQuery.error ||
+  expensesQuery.error ||
+  productsQuery.error
+) {
+  return <div className="p-6 text-red-500">Failed to load reports.</div>;
+}
+
+
 
   // Monthly revenue vs expenses
   const monthlyData = MONTHS.map((month, idx) => {

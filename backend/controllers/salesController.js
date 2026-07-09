@@ -1,4 +1,5 @@
 const Sales = require("../models/Sales");
+const Invoice = require("../models/Invoice");
 
 exports.getSales = async (req, res) => {
   try {
@@ -21,7 +22,19 @@ exports.createSale = async (req, res) => {
       invoice_number: invoiceNumber,
     });
 
-    res.status(201).json(sale);
+    await Invoice.create({
+      invoice_number: invoiceNumber,
+      customer_name: req.body.customer_name,
+      amount: req.body.total_amount,
+      status: "paid",
+      due_date: new Date(),
+      notes: "Auto-generated from sale",
+    });
+
+    res.status(201).json({
+      message: "Sale and invoice created successfully",
+      sale,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
