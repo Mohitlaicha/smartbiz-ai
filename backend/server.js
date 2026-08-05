@@ -13,10 +13,26 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://smartbiz-ai-2b6n.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const isVercelPreview =
+        origin &&
+        /^https:\/\/smartbiz-ai-2b6n-[a-z0-9-]+-smart-biz-ai\.vercel\.app$/i.test(
+          origin
+        );
+
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        isVercelPreview
+      ) {
         return callback(null, true);
       }
 
@@ -26,10 +42,26 @@ app.use(
         new Error(`Origin ${origin} is not allowed by CORS`)
       );
     },
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+
     credentials: true,
   })
 );
 
+app.options("*", cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
