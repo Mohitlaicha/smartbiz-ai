@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { api } from "@/api/client";
+
+import { api, businessAPI } from "@/api/client";
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { TrendingUp, DollarSign, Users, Package, FileText } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import {
+  
+  CalendarDays,
+  Loader2,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const COLORS = ['hsl(221,83%,53%)', 'hsl(262,83%,58%)', 'hsl(160,84%,39%)', 'hsl(38,92%,50%)', 'hsl(0,84%,60%)'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -19,120 +28,318 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
+
 export default function Reports() {
-  const { data: invoices = [] } = useQuery({
-  queryKey: ["invoices"],
-  queryFn: async () => {
-    const res = await api.get("/invoices");
-    return res.data;
-  },
-});
-  const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: async () => {
-    const res = await api.get("/customers");
-    return res.data;
-}, });
-  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: async () => {
-    const res = await api.get("/expenses");
-    return res.data;
-}, });
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: async () => {
-    const res = await api.get("/products");
-    return res.data;
-}, });const invoicesQuery = useQuery({
-  queryKey: ["invoices"],
-  queryFn: async () => {
-    const res = await api.get("/invoices");
-    return res.data;
-  },
-});
+  const [period, setPeriod] = useState("last7days");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-const customersQuery = useQuery({
-  queryKey: ["customers"],
-  queryFn: async () => {
-    const res = await api.get("/customers");
-    return res.data;
-  },
-});
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
 
-const expensesQuery = useQuery({
-  queryKey: ["expenses"],
-  queryFn: async () => {
-    const res = await api.get("/expenses");
-    return res.data;
-  },
-});
+  const {
+    data: invoices = [],
+    isLoading: invoicesLoading,
+    error: invoicesError,
+  } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: async () => {
+      const response = await api.get("/invoices");
+      return response.data;
+    },
+  });
 
-const productsQuery = useQuery({
-  queryKey: ["products"],
-  queryFn: async () => {
-    const res = await api.get("/products");
-    return res.data;
-  },
-});
+  const {
+    data: customers = [],
+    isLoading: customersLoading,
+    error: customersError,
+  } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const response = await api.get("/customers");
+      return response.data;
+    },
+  });
 
-if (
-  invoicesQuery.isLoading ||
-  customersQuery.isLoading ||
-  expensesQuery.isLoading ||
-  productsQuery.isLoading
-) {
-  return <div className="p-6">Loading reports...</div>;
-}
+  const {
+    data: expenses = [],
+    isLoading: expensesLoading,
+    error: expensesError,
+  } = useQuery({
+    queryKey: ["expenses"],
+    queryFn: async () => {
+      const response = await api.get("/expenses");
+      return response.data;
+    },
+  });
 
-if (
-  invoicesQuery.error ||
-  customersQuery.error ||
-  expensesQuery.error ||
-  productsQuery.error
-) {
-  return <div className="p-6 text-red-500">Failed to load reports.</div>;
-}
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    error: productsError,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const response = await api.get("/products");
+      return response.data;
+    },
+  });
 
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
 
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPresetDates = (selectedPeriod) => {
+    const today = new Date();
+
+    let start = new Date(today);
+    let end = new Date(today);
+
+    switch (selectedPeriod) {
+      case "yesterday":
+        start.setDate(today.getDate() - 1);
+        end = new Date(start);
+        break;
+
+      case "last7days":
+        start.setDate(today.getDate() - 6);
+        break;
+
+      case "last30days":
+        start.setDate(today.getDate() - 29);
+        break;
+
+      case "thisMonth":
+        start = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1
+        );
+
+        end = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          0
+        );
+        break;
+
+      case "previousMonth":
+        start = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1
+        );
+
+        end = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          0
+        );
+        break;
+
+      default:
+        return {
+          startDate,
+          endDate,
+        };
+    }
+
+    return {
+      startDate: formatDate(start),
+      endDate: formatDate(end),
+    };
+  };
+
+  const loadReport = async () => {
+    setReportLoading(true);
+    setReportError("");
+
+    try {
+      const dates =
+        period === "custom"
+          ? { startDate, endDate }
+          : getPresetDates(period);
+
+      if (!dates.startDate || !dates.endDate) {
+        setReportError(
+          "Please select both start and end dates"
+        );
+        return;
+      }
+
+      if (
+        new Date(dates.startDate) >
+        new Date(dates.endDate)
+      ) {
+        setReportError(
+          "Start date cannot be after end date"
+        );
+        return;
+      }
+
+      const response = await businessAPI.getReports(dates);
+
+      setReportData(response.data);
+      setStartDate(dates.startDate);
+      setEndDate(dates.endDate);
+    } catch (error) {
+      setReportError(
+        error.response?.data?.message ||
+          "Unable to load report"
+      );
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReport();
+  }, []);
+
+  if (
+    invoicesLoading ||
+    customersLoading ||
+    expensesLoading ||
+    productsLoading
+  ) {
+    return (
+      <div className="p-6">
+        Loading reports...
+      </div>
+    );
+  }
+
+  if (
+    invoicesError ||
+    customersError ||
+    expensesError ||
+    productsError
+  ) {
+    return (
+      <div className="p-6 text-red-500">
+        Failed to load reports.
+      </div>
+    );
+  }
+
+const displayedInvoices =
+  reportData?.invoices ?? invoices;
+
+const displayedCustomers =
+  reportData?.customers ?? customers;
+
+const displayedExpenses =
+  reportData?.expenses ?? expenses;
+
+const displayedSales =
+  reportData?.sales ?? [];
 
   // Monthly revenue vs expenses
   const monthlyData = MONTHS.map((month, idx) => {
-    const revenue = invoices.filter(i => i.status === 'paid' && new Date(i.createdAt).getMonth() === idx)
+    const revenue = displayedInvoices.filter(i => i.status === 'paid' && new Date(i.createdAt).getMonth() === idx)
       .reduce((s, i) => s + (i.amount || 0), 0);
-    const expense = expenses.filter(e => new Date(e.createdAt).getMonth() === idx)
+    const expense = displayedExpenses.filter(e => new Date(e.createdAt).getMonth() === idx)
       .reduce((s, e) => s + (e.amount || 0), 0);
     return { month, revenue, expense, profit: revenue - expense };
   });
 
   // Customer growth by month
   const customerGrowth = MONTHS.map((month, idx) => ({
-    month,
-    customers: customers.filter(c => new Date(c.createdAt).getMonth() <= idx).length,
-  }));
+  month,
+  customers: displayedCustomers.filter(
+    (customer) =>
+      new Date(customer.createdAt).getMonth() <= idx
+  ).length,
+}));
 
   // Expense by category
   const expenseByCategory = Object.entries(
-    expenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + (e.amount || 0); return acc; }, {})
+    displayedExpenses.reduce((acc, e) => { acc[e.category] = (acc[e.category] || 0) + (e.amount || 0); return acc; }, {})
   ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
   // Invoice status breakdown
-  const invoiceStatus = ['paid', 'sent', 'overdue', 'draft'].map(s => ({
-    name: s.charAt(0).toUpperCase() + s.slice(1),
-    value: invoices.filter(i => i.status === s).length,
-  })).filter(d => d.value > 0);
+  const invoiceStatus = [
+  "paid",
+  "sent",
+  "overdue",
+  "draft",
+]
+  .map((status) => ({
+    name:
+      status.charAt(0).toUpperCase() +
+      status.slice(1),
+
+    value: displayedInvoices.filter(
+      (invoice) => invoice.status === status
+    ).length,
+  }))
+  .filter((item) => item.value > 0);
 
   // Inventory value by category
   const inventoryByCategory = Object.entries(
     products.reduce((acc, p) => { acc[p.category || 'other'] = (acc[p.category || 'other'] || 0) + ((p.quantity || 0) * (p.price || 0)); return acc; }, {})
   ).map(([name, value]) => ({ name, value }));
 
-  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.amount || 0), 0);
-  const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const totalInventoryValue = products.reduce((s, p) => s + ((p.quantity || 0) * (p.price || 0)), 0);
+const summary = reportData?.summary;
 
+const totalRevenue =
+  summary?.totalRevenue ??
+  displayedInvoices
+    .filter(
+      (invoice) =>
+        String(invoice.status).toLowerCase() === "paid"
+    )
+    .reduce(
+      (sum, invoice) =>
+        sum + Number(invoice.amount || invoice.total || 0),
+      0
+    );
+
+const totalExpenses =
+  summary?.totalExpenses ??
+  displayedExpenses.reduce(
+    (sum, expense) =>
+      sum + Number(expense.amount || 0),
+    0
+  );
+
+const totalInventoryValue =
+  summary?.inventoryValue ??
+  products.reduce(
+    (sum, product) =>
+      sum +
+      Number(product.quantity || 0) *
+        Number(product.price || product.cost || 0),
+    0
+  );
+  
   const summaryCards = [
     { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'bg-primary/10 text-primary' },
     { label: 'Total Expenses', value: `$${totalExpenses.toLocaleString()}`, icon: TrendingUp, color: 'bg-destructive/10 text-destructive' },
     { label: 'Net Profit', value: `$${(totalRevenue - totalExpenses).toLocaleString()}`, icon: TrendingUp, color: 'bg-success/10 text-success' },
     { label: 'Inventory Value', value: `$${totalInventoryValue.toLocaleString()}`, icon: Package, color: 'bg-warning/10 text-warning' },
-    { label: 'Total Customers', value: customers.length, icon: Users, color: 'bg-accent/10 text-accent' },
-    { label: 'Total Invoices', value: invoices.length, icon: FileText, color: 'bg-chart-2/10 text-chart-2' },
-  ];
+    {
+  label: "Total Customers",
+  value:
+    summary?.totalCustomers ??
+    displayedCustomers.length,
+  icon: Users,
+  color: "bg-accent/10 text-accent",
+},
+{
+  label: "Total Invoices",
+  value:
+    summary?.totalInvoices ??
+    displayedInvoices.length,
+  icon: FileText,
+  color: "bg-chart-2/10 text-chart-2",
+}
+, ];
 
   const tooltipStyle = {
     background: 'hsl(0,0%,100%)', border: '1px solid hsl(220,13%,91%)',
@@ -142,6 +349,103 @@ if (
   return (
     <div>
       <PageHeader title="Reports & Analytics" subtitle="Business performance overview" />
+      <div className="mb-6 rounded-2xl border bg-card p-5 shadow-sm">
+  <div className="mb-4 flex items-center gap-2">
+    <CalendarDays className="h-5 w-5 text-primary" />
+
+    <h2 className="font-semibold">
+      Report period
+    </h2>
+  </div>
+
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Period
+      </label>
+
+      <select
+        value={period}
+        onChange={(event) =>
+          setPeriod(event.target.value)
+        }
+        className="h-10 w-full rounded-md border bg-background px-3"
+      >
+        <option value="yesterday">Yesterday</option>
+        <option value="last7days">Last 7 days</option>
+        <option value="last30days">Last 30 days</option>
+        <option value="thisMonth">This month</option>
+        <option value="previousMonth">
+          Previous month
+        </option>
+        <option value="custom">Custom period</option>
+      </select>
+    </div>
+
+    {period === "custom" && (
+      <>
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Start date
+          </label>
+
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(event) =>
+              setStartDate(event.target.value)
+            }
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            End date
+          </label>
+
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(event) =>
+              setEndDate(event.target.value)
+            }
+          />
+        </div>
+      </>
+    )}
+
+    <div className="flex items-end">
+      <Button
+        onClick={loadReport}
+        disabled={reportLoading}
+        className="w-full"
+      >
+       {reportLoading ?  (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating...
+          </>
+        ) : (
+          "Generate report"
+        )}
+      </Button>
+    </div>
+  </div>
+
+ {reportError && (
+  <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+    {reportError}
+  </div>
+)}
+
+  {reportData?.period?.startDate && (
+    <p className="mt-4 text-sm text-muted-foreground">
+      Showing results from{" "}
+     <strong>{reportData.period.startDate}</strong> to{" "}
+      <strong>{reportData.period.endDate}</strong>
+    </p>
+  )}
+</div>
 
       {/* KPI summary */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">

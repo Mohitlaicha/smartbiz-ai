@@ -6,7 +6,10 @@ const sequelize = require("./config/db");
 dotenv.config();
 const app = express();
 
+
+
 app.use(cors());
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -29,13 +32,22 @@ require("./models/Sales");
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/customers", require("./routes/customerRoutes"));
+app.use(
+  "/api/profile",
+  require("./routes/profileRoutes")
+);
 app.use("/api/products", require("./routes/inventoryRoutes"));
 app.use("/api/invoices", require("./routes/invoiceRoutes"));
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/employees", require("./routes/employeeRoutes"));
 app.use("/api/tasks", require("./routes/tasksRoutes"));
 app.use("/api/sales", require("./routes/salesRoutes"));
-
+app.use("/api/ai", require("./routes/aiRoutes"));
+app.use("/api/users", require("./routes/userRoutes"));
+app.use(
+  "/api/reports",
+  require("./routes/reportRoutes")
+);
 const PORT = process.env.PORT || 5000;
 
 sequelize

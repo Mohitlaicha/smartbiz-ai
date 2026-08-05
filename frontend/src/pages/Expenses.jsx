@@ -31,6 +31,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { businessAPI } from "@/api/client";
 
+
+
 const categoryColors = {
   rent: "bg-primary/10 text-primary",
   utilities: "bg-accent/10 text-accent",

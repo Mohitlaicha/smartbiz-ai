@@ -7,10 +7,47 @@ export const api = axios.create({
 });
 
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export const authAPI = {
   login: (data) => api.post("/auth/login", data),
   register: (data) => api.post("/auth/register", data),
-  forgotPassword: (data) => api.post("/auth/forgot-password", data),
+  forgotPassword: (data) =>
+    api.post("/auth/forgot-password", data),
+  resetPassword: (data) =>
+    api.post("/auth/reset-password", data),
+};
+
+export const profileAPI = {
+  getProfile: () =>
+    api.get("/profile"),
+
+  updateProfile: (data) =>
+    api.put("/profile", data),
+
+  changePassword: (data) =>
+    api.put("/profile/password", data),
 };
 export const businessAPI = {
   getDashboard: () => api.get("/dashboard"),
@@ -52,7 +89,7 @@ updateProduct: (id, data) =>
 
 deleteProduct: (id) =>
   api.delete(`/products/${id}`),
-forgotPassword: (data) =>
-  api.post("/auth/forgot-password", data),
-resetPassword: (data) => api.post("/auth/reset-password", data),
+getReports: (params = {}) =>
+  api.get("/reports", { params }),
+
 };

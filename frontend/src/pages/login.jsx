@@ -8,27 +8,51 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
+  const handleChange = (event) => {
+    setFormData((current) => ({
+      ...current,
+      [event.target.name]: event.target.value,
+    }));
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     setError("");
     setLoading(true);
 
     try {
-      const response = await authAPI.login({ email, password });
+      const response = await authAPI.login({
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      });
+
+      console.log("Login response:", response.data);
 
       localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
 
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password");
+      console.error("Login error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Invalid email or password"
+      );
     } finally {
       setLoading(false);
     }
@@ -62,16 +86,17 @@ export default function Login() {
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 
             <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+  id="email"
+  name="email"
+  type="email"
+  autoComplete="email"
+  autoFocus
+  placeholder="you@example.com"
+  value={formData.email}
+  onChange={handleChange}
+  className="pl-10 h-12"
+  required
+/>
           </div>
         </div>
 
@@ -91,15 +116,16 @@ export default function Login() {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 
             <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+  id="password"
+  name="password"
+  type="password"
+  autoComplete="current-password"
+  placeholder="••••••••"
+  value={formData.password}
+  onChange={handleChange}
+  className="pl-10 h-12"
+  required
+/>
           </div>
         </div>
 

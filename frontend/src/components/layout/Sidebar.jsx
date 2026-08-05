@@ -18,20 +18,82 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+const user = JSON.parse(
+  localStorage.getItem("user") || "null"
+);
+import { UserCircle } from "lucide-react";
 
 const navItems = [
-
-  { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/customers", icon: Users, label: "Customers" },
-  { path: "/invoices", icon: FileText, label: "Invoices" },
-  { path: "/inventory", icon: Package, label: "Inventory" },
-  { path: "/tasks", icon: CheckSquare, label: "Tasks" },
-  { path: "/expenses", icon: DollarSign, label: "Expenses" },
-  { path: "/team", icon: UserCheck, label: "Team" },
-  { path: "/sales", icon: ShoppingCart, label: "Sales" },
-  { path: "/reports", icon: BarChart2, label: "Reports" },
-  { path: "/ai-advisor", icon: Bot, label: "AI Advisor" },
+  {
+    path: "/",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+  path: "/profile",
+  label: "Profile",
+  icon: UserCircle,
+  roles: ["admin", "manager", "employee"],
+},
+  {
+    path: "/customers",
+    label: "Customers",
+    icon: Users,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+    path: "/invoices",
+    label: "Invoices",
+    icon: FileText,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+    path: "/inventory",
+    label: "Inventory",
+    icon: Package,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+    path: "/sales",
+    label: "Sales",
+    icon: ShoppingCart,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+    path: "/tasks",
+    label: "Tasks",
+    icon: CheckSquare,
+    roles: ["admin", "manager", "employee"],
+  },
+  {
+    path: "/expenses",
+    label: "Expenses",
+    icon: DollarSign,
+    roles: ["admin", "manager"],
+  },
+  {
+    path: "/team",
+    label: "Team",
+    icon: UserCheck,
+    roles: ["admin"],
+  },
+  {
+    path: "/reports",
+    label: "Reports",
+    icon: BarChart2,
+    roles: ["admin", "manager"],
+  },
+  {
+    path: "/ai-advisor",
+    label: "AI Advisor",
+    icon: Bot,
+    roles: ["admin", "manager"],
+  },
 ];
+const visibleNavItems = navItems.filter(
+  (item) => item.roles.includes(user?.role)
+);
 
 export default function Sidebar({ collapsed, onToggle }) {
   const location = useLocation();
@@ -71,7 +133,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) =>  {
           const isActive = location.pathname === item.path;
 
           return (

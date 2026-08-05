@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { businessAPI } from "@/api/client";
+import { api } from "@/api/client";
 
 const suggestions = [
   "How can I improve my cash flow?",
@@ -22,12 +23,8 @@ export default function AIAdvisor() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
-  const { data: invoicesRes } = useQuery({
-    queryKey: ["invoices"],
-    queryFn: businessAPI.getInvoices,
-  });
-
-  const invoices = invoicesRes?.data || [];
+ 
+ 
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -36,40 +33,48 @@ export default function AIAdvisor() {
   }, [messages]);
 
   const sendMessage = async (text) => {
-    if (!text.trim()) return;
+  if (!text.trim() || loading) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setInput("");
-    setLoading(true);
-
-    const totalRevenue = invoices.reduce(
-      (sum, inv) => sum + Number(inv.amount || inv.total || 0),
-      0
-    );
-
-    const reply = `
-### SmartBiz AI Advice
-
-Based on your current business data:
-
-- Total invoice revenue: **$${totalRevenue.toLocaleString()}**
-- Total invoices recorded: **${invoices.length}**
-
-**Suggestion:**
-- Track unpaid invoices regularly.
-- Monitor expenses weekly.
-- Focus on repeat customers.
-- Keep inventory updated.
-- Review sales reports every month.
-
-This is currently a local AI demo response. Later we can connect it to a real AI API.
-`;
-
-    setTimeout(() => {
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-      setLoading(false);
-    }, 700);
+  const userMessage = {
+    role: "user",
+    content: text,
   };
+
+  const previousMessages = messages;
+
+  setMessages((current) => [...current, userMessage]);
+  setInput("");
+  setLoading(true);
+
+  try {
+    const response = await api.post("/ai/advisor", {
+      message: text,
+      history: previousMessages,
+    });
+
+    setMessages((current) => [
+      ...current,
+      {
+        role: "assistant",
+        content: response.data.reply,
+      },
+    ]);
+  } catch (error) {
+    console.error("AI request failed:", error);
+
+    setMessages((current) => [
+      ...current,
+      {
+        role: "assistant",
+        content:
+          error.response?.data?.message ||
+          "Sorry, I could not generate advice right now.",
+      },
+    ]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();

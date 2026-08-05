@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
+const protect = require("../middleware/authMiddleware");
+const allowRoles = require("../middleware/roleMiddleware");
+
 const {
   getEmployees,
   createEmployee,
@@ -8,9 +11,18 @@ const {
   deleteEmployee,
 } = require("../controllers/employeeController");
 
-router.get("/", getEmployees);
-router.post("/", createEmployee);
-router.put("/:id", updateEmployee);
-router.delete("/:id", deleteEmployee);
+router.get(
+  "/",
+  protect,
+  allowRoles("admin", "manager"),
+  getEmployees
+);
+
+router.post(
+  "/",
+  protect,
+  allowRoles("admin"),
+  createEmployee
+);
 
 module.exports = router;
