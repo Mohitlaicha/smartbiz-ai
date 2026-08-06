@@ -41,13 +41,29 @@ export default function Tasks() {
   const [form, setForm] = useState(initialForm);
   const queryClient = useQueryClient();
 
- const { data: tasks = [], isLoading } = useQuery({
+ const { data: tasks = [], isLoading, isError, error } = useQuery({
   queryKey: ["tasks"],
   queryFn: async () => {
     const res = await api.get("/tasks");
-    return res.data;
+
+    console.log("Tasks API response:", res.data);
+
+    if (Array.isArray(res.data)) {
+      return res.data;
+    }
+
+    if (Array.isArray(res.data?.tasks)) {
+      return res.data.tasks;
+    }
+
+    if (Array.isArray(res.data?.data)) {
+      return res.data.data;
+    }
+
+    return [];
   },
 });
+const taskList = Array.isArray(tasks) ? tasks : [];
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -84,21 +100,27 @@ export default function Tasks() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editingTask) {
-      updateMutation.mutate({ id: editingTask.id, data: form });
+      updateMutation.mutate({
+  id: getTaskId(editingTask),
+  data: form,
+});
     } else {
       createMutation.mutate(form);
     }
   };
 
-  const filtered = tasks
-    .filter(t => filter === 'all' || t.status === filter)
-    .filter(t => t.title?.toLowerCase().includes(search.toLowerCase()));
-
+const filtered = taskList
+  .filter((task) => filter === "all" || task.status === filter)
+  .filter((task) =>
+    task.title?.toLowerCase().includes(search.toLowerCase())
+  );
+const getTaskId = (task) => task.id || task._id;
+  
   return (
     <div>
       <PageHeader
         title="Tasks"
-        subtitle={`${tasks.filter(t => t.status !== 'done').length} active tasks`}
+        subtitle={`${taskList.filter((task) => task.status !== "done").length} active tasks`}
         actions={
           <Button onClick={() => setDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" /> New Task
@@ -153,8 +175,8 @@ export default function Tasks() {
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(task)}>Edit</DropdownMenuItem>
-                            {task.status !== 'done' && <DropdownMenuItem onClick={() => updateMutation.mutate({ id: task._id, data: { status: 'done' } })}>Mark Done</DropdownMenuItem>}
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteMutation.mutate(task._id)}>Delete</DropdownMenuItem>
+                            {task.status !== 'done' && <DropdownMenuItem onClick={() => updateMutation.mutate({ id: getTaskId(task), data: {...task, status: 'done' } })}>Mark Done</DropdownMenuItem>}
+                            <DropdownMenuItem className="text-destructive" onClick={() => deleteMutation.mutate(getTaskId(task))}>Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -170,7 +192,16 @@ export default function Tasks() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={closeDialog}>
+      <Dialog
+  open={dialogOpen}
+  onOpenChange={(open) => {
+    if (!open) {
+      closeDialog();
+    } else {
+      setDialogOpen(true);
+    }
+  }}
+>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editingTask ? 'Edit Task' : 'New Task'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
