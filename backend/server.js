@@ -15,7 +15,7 @@ const allowedOrigins = [
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://smartbiz-ai-2b6n.vercel.app",
+  "https://smartbizai.site",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
