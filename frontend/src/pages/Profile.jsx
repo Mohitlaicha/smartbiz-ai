@@ -7,7 +7,7 @@ import {
   Calendar,
 } from "lucide-react";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/AuthContext";
 import {
   profileAPI,
   businessAPI,
