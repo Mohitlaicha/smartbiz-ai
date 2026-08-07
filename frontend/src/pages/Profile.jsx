@@ -3,15 +3,25 @@ import {
   User,
   Lock,
   Loader2,
+  CheckSquare,
+  Calendar,
 } from "lucide-react";
 
-import { profileAPI } from "@/api/client";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  profileAPI,
+  businessAPI,
+} from "@/api/client";
+
 import PageHeader from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 export default function Profile() {
+  const { user } = useAuth();
+
   const [profileForm, setProfileForm] = useState({
     name: "",
     email: "",
@@ -24,8 +34,13 @@ export default function Profile() {
     confirmPassword: "",
   });
 
+  const [myTasks, setMyTasks] = useState([]);
+
   const [loadingProfile, setLoadingProfile] =
     useState(true);
+
+  const [loadingTasks, setLoadingTasks] =
+    useState(false);
 
   const [savingProfile, setSavingProfile] =
     useState(false);
@@ -45,10 +60,19 @@ export default function Profile() {
   const [passwordError, setPasswordError] =
     useState("");
 
+  const [taskError, setTaskError] =
+    useState("");
+
+  // ==========================
+  // Load Profile
+  // ==========================
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const response = await profileAPI.getProfile();
+        setProfileError("");
+
+        const response =
+          await profileAPI.getProfile();
 
         setProfileForm({
           name: response.data.name || "",
@@ -56,6 +80,11 @@ export default function Profile() {
           role: response.data.role || "",
         });
       } catch (error) {
+        console.error(
+          "Load profile error:",
+          error
+        );
+
         setProfileError(
           error.response?.data?.message ||
             "Unable to load profile"
@@ -68,19 +97,58 @@ export default function Profile() {
     loadProfile();
   }, []);
 
+  // ==========================
+  // Load Employee Tasks
+  // ==========================
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    if (user.role !== "employee") {
+      return;
+    }
+
+    const loadMyTasks = async () => {
+      try {
+        setLoadingTasks(true);
+        setTaskError("");
+
+        const response =
+          await businessAPI.getMyTasks();
+
+        const tasks = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.tasks)
+          ? response.data.tasks
+          : [];
+
+        setMyTasks(tasks);
+      } catch (error) {
+        console.error(
+          "Unable to load profile tasks:",
+          error
+        );
+
+        setTaskError(
+          error.response?.data?.message ||
+            "Unable to load assigned tasks"
+        );
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+
+    loadMyTasks();
+  }, [user?.id, user?.role]);
+
+  // ==========================
+  // Profile Form
+  // ==========================
   const handleProfileChange = (event) => {
     const { name, value } = event.target;
 
     setProfileForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
-
-  const handlePasswordChange = (event) => {
-    const { name, value } = event.target;
-
-    setPasswordForm((current) => ({
       ...current,
       [name]: value,
     }));
@@ -94,27 +162,42 @@ export default function Profile() {
     setSavingProfile(true);
 
     try {
-      const response = await profileAPI.updateProfile({
-        name: profileForm.name,
-        email: profileForm.email,
-      });
+      const response =
+        await profileAPI.updateProfile({
+          name: profileForm.name,
+          email: profileForm.email,
+        });
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(response.data.user)
-      );
+      if (response.data.user) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify(response.data.user)
+        );
 
-      setProfileForm((current) => ({
-        ...current,
-        name: response.data.user.name,
-        email: response.data.user.email,
-        role: response.data.user.role,
-      }));
+        setProfileForm((current) => ({
+          ...current,
+          name:
+            response.data.user.name ||
+            current.name,
+          email:
+            response.data.user.email ||
+            current.email,
+          role:
+            response.data.user.role ||
+            current.role,
+        }));
+      }
 
       setProfileMessage(
-        response.data.message
+        response.data.message ||
+          "Profile updated successfully"
       );
     } catch (error) {
+      console.error(
+        "Update profile error:",
+        error
+      );
+
       setProfileError(
         error.response?.data?.message ||
           "Unable to update profile"
@@ -124,27 +207,17 @@ export default function Profile() {
     }
   };
 
-  const [myTasks, setMyTasks] = useState([]);
+  // ==========================
+  // Password Form
+  // ==========================
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
 
-useEffect(() => {
-  if (user.role === "employee") {
-    loadMyTasks();
-  }
-}, []);
-
-const loadMyTasks = async () => {
-  try {
-    const response =
-      await businessAPI.getMyTasks();
-
-    setMyTasks(response.data);
-  } catch (error) {
-    console.error(
-      "Unable to load profile tasks:",
-      error
-    );
-  }
-};
+    setPasswordForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
 
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
@@ -156,11 +229,15 @@ const loadMyTasks = async () => {
       passwordForm.newPassword !==
       passwordForm.confirmPassword
     ) {
-      setPasswordError("New passwords do not match");
+      setPasswordError(
+        "New passwords do not match"
+      );
       return;
     }
 
-    if (passwordForm.newPassword.length < 8) {
+    if (
+      passwordForm.newPassword.length < 8
+    ) {
       setPasswordError(
         "New password must be at least 8 characters"
       );
@@ -180,7 +257,8 @@ const loadMyTasks = async () => {
         });
 
       setPasswordMessage(
-        response.data.message
+        response.data.message ||
+          "Password changed successfully"
       );
 
       setPasswordForm({
@@ -189,6 +267,11 @@ const loadMyTasks = async () => {
         confirmPassword: "",
       });
     } catch (error) {
+      console.error(
+        "Change password error:",
+        error
+      );
+
       setPasswordError(
         error.response?.data?.message ||
           "Unable to change password"
@@ -198,6 +281,35 @@ const loadMyTasks = async () => {
     }
   };
 
+  // ==========================
+  // Task helpers
+  // ==========================
+  const getTaskStatusLabel = (status) => {
+    switch (status) {
+      case "todo":
+        return "To Do";
+
+      case "in_progress":
+        return "In Progress";
+
+      case "review":
+        return "Review";
+
+      case "done":
+        return "Done";
+
+      default:
+        return status || "Unknown";
+    }
+  };
+
+  const getDueDate = (task) => {
+    return task.due_date || task.dueDate;
+  };
+
+  // ==========================
+  // Loading
+  // ==========================
   if (loadingProfile) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -206,6 +318,9 @@ const loadMyTasks = async () => {
     );
   }
 
+  // ==========================
+  // Page
+  // ==========================
   return (
     <div>
       <PageHeader
@@ -214,6 +329,10 @@ const loadMyTasks = async () => {
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+
+        {/* ==========================
+            Account Details
+        ========================== */}
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -305,6 +424,9 @@ const loadMyTasks = async () => {
           </form>
         </div>
 
+        {/* ==========================
+            Change Password
+        ========================== */}
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -317,7 +439,8 @@ const loadMyTasks = async () => {
               </h2>
 
               <p className="text-sm text-muted-foreground">
-                Use a strong password with at least 8 characters
+                Use a strong password with at least
+                8 characters
               </p>
             </div>
           </div>
@@ -350,7 +473,9 @@ const loadMyTasks = async () => {
                 value={
                   passwordForm.currentPassword
                 }
-                onChange={handlePasswordChange}
+                onChange={
+                  handlePasswordChange
+                }
                 autoComplete="current-password"
                 required
               />
@@ -365,8 +490,12 @@ const loadMyTasks = async () => {
                 id="newPassword"
                 name="newPassword"
                 type="password"
-                value={passwordForm.newPassword}
-                onChange={handlePasswordChange}
+                value={
+                  passwordForm.newPassword
+                }
+                onChange={
+                  handlePasswordChange
+                }
                 autoComplete="new-password"
                 required
               />
@@ -384,7 +513,9 @@ const loadMyTasks = async () => {
                 value={
                   passwordForm.confirmPassword
                 }
-                onChange={handlePasswordChange}
+                onChange={
+                  handlePasswordChange
+                }
                 autoComplete="new-password"
                 required
               />
@@ -407,60 +538,114 @@ const loadMyTasks = async () => {
         </div>
       </div>
 
-      {user.role === "employee" && (
-  <div className="mt-8">
-    <h2 className="text-xl font-semibold mb-4">
-      My Assigned Tasks
-    </h2>
+      {/* ==========================
+          Employee Assigned Tasks
+      ========================== */}
+      {user?.role === "employee" && (
+        <div className="mt-8 rounded-2xl border bg-card p-6 shadow-sm">
 
-    {myTasks.length === 0 ? (
-      <p className="text-muted-foreground">
-        No tasks have been assigned to you.
-      </p>
-    ) : (
-      <div className="space-y-3">
-        {myTasks.map((task) => (
-          <div
-            key={task.id}
-            className="border rounded-xl p-4"
-          >
-            <div className="flex justify-between">
-              <h3 className="font-semibold">
-                {task.title}
-              </h3>
-
-              <span>
-                {task.status}
-              </span>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CheckSquare className="h-5 w-5" />
             </div>
 
-            <p className="text-sm mt-2">
-              {task.description}
-            </p>
+            <div>
+              <h2 className="text-xl font-semibold">
+                My Assigned Tasks
+              </h2>
 
-            <div className="text-sm text-muted-foreground mt-3">
-              Priority: {task.priority}
+              <p className="text-sm text-muted-foreground">
+                Tasks assigned to your account
+              </p>
             </div>
-
-            <div className="text-sm text-muted-foreground">
-              Assigned by:{" "}
-              {task.assigner?.name || "Manager"}
-            </div>
-
-            {task.dueDate && (
-              <div className="text-sm text-muted-foreground">
-                Due:{" "}
-                {new Date(
-                  task.dueDate
-                ).toLocaleDateString()}
-              </div>
-            )}
           </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+
+          {taskError && (
+            <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {taskError}
+            </div>
+          )}
+
+          {loadingTasks ? (
+            <div className="flex items-center gap-2 py-5 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading tasks...
+            </div>
+          ) : myTasks.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-6 text-center">
+              <CheckSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+
+              <p className="font-medium">
+                No assigned tasks
+              </p>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                No tasks have been assigned to you.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myTasks.map((task) => {
+                const dueDate =
+                  getDueDate(task);
+
+                return (
+                  <div
+                    key={task.id || task._id}
+                    className="rounded-xl border p-4"
+                  >
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold">
+                          {task.title}
+                        </h3>
+
+                        {task.description && (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {task.description}
+                          </p>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
+                          <span className="capitalize">
+                            Priority:{" "}
+                            {task.priority ||
+                              "medium"}
+                          </span>
+
+                          {task.assigner && (
+                            <span>
+                              Assigned by:{" "}
+                              {task.assigner.name}
+                            </span>
+                          )}
+
+                          {dueDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+
+                              {new Date(
+                                dueDate
+                              ).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <Badge variant="secondary">
+                        {getTaskStatusLabel(
+                          task.status
+                        )}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
