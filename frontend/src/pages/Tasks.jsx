@@ -21,9 +21,9 @@ const user = JSON.parse(
   localStorage.getItem("user") || "{}"
 );
 
-const isEmployee = user.role === "employee";
+const isEmployee = user?.role === "employee";
 const isManagerOrAdmin =
-  user.role === "admin" || user.role === "manager";
+  user?.role === "admin" || user?.role === "manager";
 
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-muted text-muted-foreground' },
@@ -57,7 +57,7 @@ export default function Tasks() {
   const queryClient = useQueryClient();
 
  const { data: tasks = [], isLoading, isError, error } = useQuery({
-  queryKey: ["tasks", user.role],
+  queryKey: ["tasks", user?.role],
 
   queryFn: async () => {
     const res = isEmployee

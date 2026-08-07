@@ -105,7 +105,7 @@ export default function Profile() {
       return;
     }
 
-    if (user.role !== "employee") {
+    if (user?.role !== "employee") {
       return;
     }
 
@@ -177,13 +177,13 @@ export default function Profile() {
         setProfileForm((current) => ({
           ...current,
           name:
-            response.data.user.name ||
+            response.data.user?.name ||
             current.name,
           email:
-            response.data.user.email ||
+            response.data.user?.email ||
             current.email,
           role:
-            response.data.user.role ||
+            response.data.user?.role ||
             current.role,
         }));
       }
