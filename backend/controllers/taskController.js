@@ -115,9 +115,10 @@ exports.updateMyTaskStatus = async (req, res) => {
     const { status } = req.body;
 
     const allowedStatuses = [
-      "pending",
+      "todo",
       "in_progress",
-      "completed",
+      "review",
+      "done",
     ];
 
     if (!allowedStatuses.includes(status)) {
@@ -128,14 +129,14 @@ exports.updateMyTaskStatus = async (req, res) => {
 
     const task = await Task.findOne({
       where: {
-        id,
+        id: id,
         assignedTo: req.user.id,
       },
     });
 
     if (!task) {
       return res.status(404).json({
-        message: "Task not found",
+        message: "Task not found or not assigned to you",
       });
     }
 
@@ -143,15 +144,18 @@ exports.updateMyTaskStatus = async (req, res) => {
 
     await task.save();
 
-    return res.json({
-      message: "Task status updated",
+    return res.status(200).json({
+      message: "Task status updated successfully",
       task,
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Update task status error:",
+      error
+    );
 
     return res.status(500).json({
-      message: "Unable to update task",
+      message: "Unable to update task status",
     });
   }
 };
