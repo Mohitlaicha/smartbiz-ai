@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
+
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -39,13 +41,24 @@ export default function Login() {
 
       console.log("Login response:", response.data);
 
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify(response.data.user)
-      );
+    localStorage.setItem(
+  "token",
+  response.data.token
+);
 
-      navigate("/");
+localStorage.setItem(
+  "user",
+  JSON.stringify(response.data.user)
+);
+
+window.dispatchEvent(
+  new Event("auth-change")
+);
+
+navigate("/dashboard", {
+  replace: true,
+});
+     
     } catch (err) {
       console.error("Login error:", err);
 

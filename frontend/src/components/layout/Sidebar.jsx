@@ -18,9 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-const user = JSON.parse(
-  localStorage.getItem("user") || "null"
-);
+
 import { UserCircle } from "lucide-react";
 
 const navItems = [
@@ -95,7 +93,12 @@ const visibleNavItems = navItems.filter(
   (item) => item.roles.includes(user?.role)
 );
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({
+  collapsed,
+  onToggle,
+  user,
+  onLogout,
+}) {
   const location = useLocation();
   const navigate = useNavigate();
 

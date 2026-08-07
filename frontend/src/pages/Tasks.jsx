@@ -145,11 +145,10 @@ const createMutation = useMutation({
     due_date: task.due_date || "",
     category: task.category || "other",
 
-    assignedTo: String(
-      task.assignedTo ||
-      task.assignee?.id ||
-      ""
-    ),
+   assignedTo:
+  task.assignedTo
+    ? String(task.assignedTo)
+    : "all",
   });
 
   setDialogOpen(true);
