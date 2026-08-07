@@ -99,6 +99,13 @@ export default function Sidebar({
   user,
   onLogout,
 }) {
+  const role = user?.role?.toLowerCase();
+
+  const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isEmployee = role === "employee";
+  const isManagerOrAdmin =
+    isAdmin || isManager;
   const location = useLocation();
   const navigate = useNavigate();
 
