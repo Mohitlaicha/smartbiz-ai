@@ -1,52 +1,157 @@
 const Task = require("../models/Task");
+const User = require("../models/User");
+
+exports.createTask = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      priority,
+      dueDate,
+      assignedTo,
+    } = req.body;
+
+    if (!title || !assignedTo) {
+      return res.status(400).json({
+        message: "Title and employee are required",
+      });
+    }
+
+    const employee = await User.findOne({
+      where: {
+        id: assignedTo,
+        role: "employee",
+        status: "active",
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        message: "Employee not found",
+      });
+    }
+
+    const task = await Task.create({
+      title,
+      description,
+      priority,
+      dueDate,
+      assignedTo,
+      assignedBy: req.user.id,
+      status: "pending",
+    });
+
+    return res.status(201).json({
+      message: "Task assigned successfully",
+      task,
+    });
+  } catch (error) {
+    console.error("Create task error:", error);
+
+    return res.status(500).json({
+      message: "Unable to assign task",
+    });
+  }
+};
 
 exports.getTasks = async (req, res) => {
   try {
     const tasks = await Task.findAll({
-      order: [["id", "DESC"]],
+      include: [
+        {
+          model: User,
+          as: "assignee",
+          attributes: ["id", "name", "email"],
+        },
+        {
+          model: User,
+          as: "assigner",
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
     });
 
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.json(tasks);
+  } catch (error) {
+    console.error("Get tasks error:", error);
+
+    return res.status(500).json({
+      message: "Unable to load tasks",
+    });
+  }
+};
+exports.getMyTasks = async (req, res) => {
+  try {
+    const tasks = await Task.findAll({
+      where: {
+        assignedTo: req.user.id,
+      },
+
+      include: [
+        {
+          model: User,
+          as: "assigner",
+          attributes: ["id", "name"],
+        },
+      ],
+
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.json(tasks);
+  } catch (error) {
+    console.error("My tasks error:", error);
+
+    return res.status(500).json({
+      message: "Unable to load your tasks",
+    });
   }
 };
 
-exports.createTask = async (req, res) => {
+exports.updateMyTaskStatus = async (req, res) => {
   try {
-    const task = await Task.create(req.body);
-    res.status(201).json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+    const { id } = req.params;
+    const { status } = req.body;
 
-exports.updateTask = async (req, res) => {
-  try {
-    const task = await Task.findByPk(req.params.id);
+    const allowedStatuses = [
+      "pending",
+      "in_progress",
+      "completed",
+    ];
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid task status",
+      });
     }
 
-    await task.update(req.body);
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.deleteTask = async (req, res) => {
-  try {
-    const task = await Task.findByPk(req.params.id);
+    const task = await Task.findOne({
+      where: {
+        id,
+        assignedTo: req.user.id,
+      },
+    });
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({
+        message: "Task not found",
+      });
     }
 
-    await task.destroy();
-    res.json({ message: "Task deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    task.status = status;
+
+    await task.save();
+
+    return res.json({
+      message: "Task status updated",
+      task,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Unable to update task",
+    });
   }
 };

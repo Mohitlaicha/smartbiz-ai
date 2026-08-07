@@ -1,18 +1,49 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
+
+
 const Task = sequelize.define("Task", {
-  title: DataTypes.STRING,
-  description: DataTypes.TEXT,
-  status: {
+  title: {
     type: DataTypes.STRING,
-    defaultValue: "todo",
+    allowNull: false,
   },
+
+  description: {
+    type: DataTypes.TEXT,
+  },
+
+  status: {
+    type: DataTypes.ENUM(
+      "pending",
+      "in_progress",
+      "completed"
+    ),
+    defaultValue: "pending",
+  },
+
   priority: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM(
+      "low",
+      "medium",
+      "high"
+    ),
     defaultValue: "medium",
   },
-  due_date: DataTypes.DATEONLY,
+
+  dueDate: {
+    type: DataTypes.DATE,
+  },
+
+  assignedTo: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+
+  assignedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 });
 
 module.exports = Task;

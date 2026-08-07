@@ -8,28 +8,75 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ==============================
+// Models
+// ==============================
+const User = require("./models/User");
+const Customer = require("./models/Customer");
+const Product = require("./models/Product");
+const Invoice = require("./models/Invoice");
+const Expense = require("./models/Expense");
+const Task = require("./models/Task");
+const Employee = require("./models/Employee");
+const Sales = require("./models/Sales");
 
+// ==============================
+// Associations
+// ==============================
 
+// A task is assigned to one user
+Task.belongsTo(User, {
+  foreignKey: "assignedTo",
+  as: "assignee",
+});
+
+// A task is assigned by one user
+Task.belongsTo(User, {
+  foreignKey: "assignedBy",
+  as: "assigner",
+});
+
+// Optional reverse associations
+User.hasMany(Task, {
+  foreignKey: "assignedTo",
+  as: "assignedTasks",
+});
+
+User.hasMany(Task, {
+  foreignKey: "assignedBy",
+  as: "createdTasks",
+});
+
+// ==============================
+// CORS
+// ==============================
 const allowedOrigins = [
   "http://localhost:5173",
   "https://smartbizai.site",
+  "https://www.smartbizai.site",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
     origin(origin, callback) {
+      // Allow Postman, curl, server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow configured origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow Vercel preview deployments
       const isVercelPreview =
-        origin &&
-        /^https:\/\/smartbiz-ai-2b6n-[a-z0-9-]+-smart-biz-ai\.vercel\.app$/i.test(
+        /^https:\/\/smartbiz-ai-[a-z0-9-]+.*\.vercel\.app$/i.test(
           origin
         );
 
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        isVercelPreview
-      ) {
+      if (isVercelPreview) {
         return callback(null, true);
       }
 
@@ -58,9 +105,20 @@ app.use(
   })
 );
 
-
+// ==============================
+// Middleware
+// ==============================
 app.use(express.json());
 
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
+// ==============================
+// Basic routes
+// ==============================
 app.get("/", (req, res) => {
   res.send("SmartBiz backend running");
 });
@@ -78,36 +136,93 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-// Load Sequelize models
-require("./models/User");
-require("./models/Customer");
-require("./models/Product");
-require("./models/Invoice");
-require("./models/Expense");
-require("./models/Task");
-require("./models/Employee");
-require("./models/Sales");
+// ==============================
+// API Routes
+// ==============================
+app.use(
+  "/api/auth",
+  require("./routes/authRoutes")
+);
 
-// Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/dashboard", require("./routes/dashboardRoutes"));
-app.use("/api/customers", require("./routes/customerRoutes"));
-app.use("/api/profile", require("./routes/profileRoutes"));
-app.use("/api/products", require("./routes/inventoryRoutes"));
-app.use("/api/invoices", require("./routes/invoiceRoutes"));
-app.use("/api/expenses", require("./routes/expenseRoutes"));
-app.use("/api/employees", require("./routes/employeeRoutes"));
-app.use("/api/tasks", require("./routes/tasksRoutes"));
-app.use("/api/sales", require("./routes/salesRoutes"));
-app.use("/api/ai", require("./routes/aiRoutes"));
-app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/reports", require("./routes/reportRoutes"));
+app.use(
+  "/api/dashboard",
+  require("./routes/dashboardRoutes")
+);
 
+app.use(
+  "/api/customers",
+  require("./routes/customerRoutes")
+);
+
+app.use(
+  "/api/profile",
+  require("./routes/profileRoutes")
+);
+
+app.use(
+  "/api/products",
+  require("./routes/inventoryRoutes")
+);
+
+app.use(
+  "/api/invoices",
+  require("./routes/invoiceRoutes")
+);
+
+app.use(
+  "/api/expenses",
+  require("./routes/expenseRoutes")
+);
+
+app.use(
+  "/api/employees",
+  require("./routes/employeeRoutes")
+);
+
+app.use(
+  "/api/tasks",
+  require("./routes/tasksRoutes")
+);
+
+app.use(
+  "/api/sales",
+  require("./routes/salesRoutes")
+);
+
+app.use(
+  "/api/ai",
+  require("./routes/aiRoutes")
+);
+
+app.use(
+  "/api/users",
+  require("./routes/userRoutes")
+);
+
+app.use(
+  "/api/reports",
+  require("./routes/reportRoutes")
+);
+
+// ==============================
+// 404 handler
+// ==============================
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Route not found",
+  });
+});
+
+// ==============================
 // Error handler
+// ==============================
 app.use((error, req, res, next) => {
-  console.error("Server error:", error.message);
+  console.error("Server error:", error);
 
-  if (error.message.includes("not allowed by CORS")) {
+  if (
+    error.message &&
+    error.message.includes("not allowed by CORS")
+  ) {
     return res.status(403).json({
       message: "Origin is not allowed by CORS",
     });
@@ -118,22 +233,34 @@ app.use((error, req, res, next) => {
   });
 });
 
+// ==============================
+// Start server
+// ==============================
 const startServer = async () => {
   try {
     await sequelize.authenticate();
+
     console.log("MySQL connected");
 
     await sequelize.sync({
       alter: true,
     });
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Backend running on port ${PORT}`);
-    });
+    console.log("Database synchronized");
+
+    app.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+        console.log(
+          `Backend running on port ${PORT}`
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "Database connection failed:",
-      error.message
+      error
     );
 
     process.exit(1);

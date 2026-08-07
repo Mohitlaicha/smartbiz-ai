@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from "@/api/client";
+import { api, businessAPI } from "@/api/client";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, CheckSquare, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
+const user = JSON.parse(
+  localStorage.getItem("user") || "{}"
+);
+
+const isEmployee = user.role === "employee";
+const isManagerOrAdmin =
+  user.role === "admin" || user.role === "manager";
+
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-muted text-muted-foreground' },
   in_progress: { label: 'In Progress', color: 'bg-primary/10 text-primary' },
@@ -31,8 +39,15 @@ const priorityConfig = {
   low: { label: 'Low', dotColor: 'bg-muted-foreground' },
 };
 
-const initialForm = { title: '', description: '', status: 'todo', priority: 'medium', due_date: '', category: 'other' };
-
+const initialForm = {
+  title: "",
+  description: "",
+  status: "todo",
+  priority: "medium",
+  due_date: "",
+  category: "other",
+  assignedTo: "",
+};
 export default function Tasks() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -42,9 +57,12 @@ export default function Tasks() {
   const queryClient = useQueryClient();
 
  const { data: tasks = [], isLoading, isError, error } = useQuery({
-  queryKey: ["tasks"],
+  queryKey: ["tasks", user.role],
+
   queryFn: async () => {
-    const res = await api.get("/tasks");
+    const res = isEmployee
+      ? await api.get("/tasks/my")
+      : await api.get("/tasks");
 
     console.log("Tasks API response:", res.data);
 
@@ -65,14 +83,38 @@ export default function Tasks() {
 });
 const taskList = Array.isArray(tasks) ? tasks : [];
 
-  const createMutation = useMutation({
-    mutationFn: async (data) => {
-  const res = await api.post("/tasks", data);
-  return res.data;
-},
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks'] }); closeDialog(); },
-  });
+const { data: employeeUsers = [] } = useQuery({
+  queryKey: ["employee-users"],
 
+  queryFn: async () => {
+    const res = await api.get("/users/employees");
+    return res.data;
+  },
+
+  enabled: isManagerOrAdmin,
+});
+
+
+
+
+
+const createMutation = useMutation({
+  mutationFn: (data) =>
+    businessAPI.createTask(data),
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["tasks"],
+    });
+
+    setDialogOpen(false);
+    setForm(initialForm);
+  },
+});
+
+
+
+  
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
   const res = await api.put(`/tasks/${id}`, data);
@@ -91,24 +133,51 @@ const taskList = Array.isArray(tasks) ? tasks : [];
 
   const closeDialog = () => { setDialogOpen(false); setEditingTask(null); setForm(initialForm); };
 
-  const openEdit = (task) => {
-    setEditingTask(task);
-    setForm({ title: task.title, description: task.description || '', status: task.status || 'todo', priority: task.priority || 'medium', due_date: task.due_date || '', category: task.category || 'other' });
-    setDialogOpen(true);
-  };
+ const openEdit = (task) => {
+  setEditingTask(task);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingTask) {
-      updateMutation.mutate({
-  id: getTaskId(editingTask),
-  data: form,
-});
-    } else {
-      createMutation.mutate(form);
-    }
-  };
+  setForm({
+    title: task.title || "",
+    description: task.description || "",
+    status: task.status || "todo",
+    priority: task.priority || "medium",
+    due_date: task.due_date || "",
+    category: task.category || "other",
 
+    assignedTo: String(
+      task.assignedTo ||
+      task.assignee?.id ||
+      ""
+    ),
+  });
+
+  setDialogOpen(true);
+};
+
+ const handleSubmit = (e) => {
+  e.preventDefault();
+
+  if (!editingTask && !form.assignedTo) {
+    return;
+  }
+
+  if (editingTask) {
+    updateMutation.mutate({
+      id: getTaskId(editingTask),
+      data: form,
+    });
+  } else {
+    createMutation.mutate({
+      title: form.title,
+      description: form.description,
+      status: form.status,
+      priority: form.priority,
+      due_date: form.due_date || null,
+      category: form.category,
+      assignedTo: Number(form.assignedTo),
+    });
+  }
+};
 const filtered = taskList
   .filter((task) => filter === "all" || task.status === filter)
   .filter((task) =>
@@ -121,11 +190,17 @@ const getTaskId = (task) => task.id || task._id;
       <PageHeader
         title="Tasks"
         subtitle={`${taskList.filter((task) => task.status !== "done").length} active tasks`}
-        actions={
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> New Task
-          </Button>
-        }
+       actions={
+  isManagerOrAdmin ? (
+    <Button
+      onClick={() => setDialogOpen(true)}
+      className="gap-2"
+    >
+      <Plus className="w-4 h-4" />
+      New Task
+    </Button>
+  ) : null
+}
       />
 
       <div className="glass rounded-2xl p-6">
@@ -145,7 +220,26 @@ const getTaskId = (task) => task.id || task._id;
         </div>
 
         {filtered.length === 0 && !isLoading ? (
-          <EmptyState icon={CheckSquare} title="No tasks found" description="Create a new task to get started" action={<Button onClick={() => setDialogOpen(true)} size="sm"><Plus className="w-4 h-4 mr-2" /> New Task</Button>} />
+          <EmptyState
+  icon={CheckSquare}
+  title="No tasks found"
+  description={
+    isEmployee
+      ? "No tasks have been assigned to you"
+      : "Create a new task to get started"
+  }
+  action={
+    isManagerOrAdmin ? (
+      <Button
+        onClick={() => setDialogOpen(true)}
+        size="sm"
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        New Task
+      </Button>
+    ) : null
+  }
+/>
         ) : (
           <div className="space-y-3">
             <AnimatePresence>
@@ -153,13 +247,24 @@ const getTaskId = (task) => task.id || task._id;
                 const status = statusConfig[task.status] || statusConfig.todo;
                 const priority = priorityConfig[task.priority] || priorityConfig.medium;
                 return (
-                  <motion.div key={task._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                 <motion.div key={getTaskId(task)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="p-4 rounded-xl border border-border/50 hover:bg-muted/30 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className={cn("w-3 h-3 rounded-full flex-shrink-0 mt-1", priority.dotColor)} />
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <p className={cn("font-medium break-words", task.status === 'done' && "line-through text-muted-foreground")}>{task.title}</p>
+                        {isManagerOrAdmin && task.assignee && (
+  <p className="text-sm text-muted-foreground mt-1">
+    Assigned to: {task.assignee.name}
+  </p>
+)}
+
+{task.assigner && (
+  <p className="text-sm text-muted-foreground">
+    Assigned by: {task.assigner.name}
+  </p>
+)}
                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           {task.due_date && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -170,16 +275,108 @@ const getTaskId = (task) => task.id || task._id;
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="secondary" className={cn("text-xs hidden sm:inline-flex", status.color)}>{status.label}</Badge>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(task)}>Edit</DropdownMenuItem>
-                            {task.status !== 'done' && <DropdownMenuItem onClick={() => updateMutation.mutate({ id: getTaskId(task), data: {...task, status: 'done' } })}>Mark Done</DropdownMenuItem>}
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteMutation.mutate(getTaskId(task))}>Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+
+  {isEmployee ? (
+    <Select
+      value={task.status || "todo"}
+      onValueChange={async (newStatus) => {
+        try {
+          await businessAPI.updateMyTaskStatus(
+            getTaskId(task),
+            newStatus
+          );
+
+          queryClient.invalidateQueries({
+            queryKey: ["tasks"],
+          });
+        } catch (error) {
+          console.error(
+            "Task status update failed:",
+            error
+          );
+        }
+      }}
+    >
+      <SelectTrigger className="w-36 h-8">
+        <SelectValue />
+      </SelectTrigger>
+
+      <SelectContent>
+        <SelectItem value="todo">
+          To Do
+        </SelectItem>
+
+        <SelectItem value="in_progress">
+          In Progress
+        </SelectItem>
+
+        <SelectItem value="done">
+          Done
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  ) : (
+    <>
+      <Badge
+        variant="secondary"
+        className={cn(
+          "text-xs hidden sm:inline-flex",
+          status.color
+        )}
+      >
+        {status.label}
+      </Badge>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => openEdit(task)}
+          >
+            Edit
+          </DropdownMenuItem>
+
+          {task.status !== "done" && (
+            <DropdownMenuItem
+              onClick={() =>
+                updateMutation.mutate({
+                  id: getTaskId(task),
+                  data: {
+                    ...task,
+                    status: "done",
+                  },
+                })
+              }
+            >
+              Mark Done
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={() =>
+              deleteMutation.mutate(
+                getTaskId(task)
+              )
+            }
+          >
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  )}
+
+</div>
                     </div>
                     <div className="mt-1 pl-6 sm:hidden">
                       <Badge variant="secondary" className={cn("text-xs", status.color)}>{status.label}</Badge>
@@ -205,8 +402,39 @@ const getTaskId = (task) => task.id || task._id;
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editingTask ? 'Edit Task' : 'New Task'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+
             <div><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
+            {isManagerOrAdmin && (
+  <div>
+    <Label>Assign To *</Label>
+
+    <Select
+      value={form.assignedTo}
+      onValueChange={(value) =>
+        setForm({
+          ...form,
+          assignedTo: value,
+        })
+      }
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select employee" />
+      </SelectTrigger>
+
+      <SelectContent>
+        {employeeUsers.map((employee) => (
+          <SelectItem
+            key={employee.id}
+            value={String(employee.id)}
+          >
+            {employee.name} ({employee.email})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+)}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Priority</Label>
                 <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>

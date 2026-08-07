@@ -124,6 +124,28 @@ export default function Profile() {
     }
   };
 
+  const [myTasks, setMyTasks] = useState([]);
+
+useEffect(() => {
+  if (user.role === "employee") {
+    loadMyTasks();
+  }
+}, []);
+
+const loadMyTasks = async () => {
+  try {
+    const response =
+      await businessAPI.getMyTasks();
+
+    setMyTasks(response.data);
+  } catch (error) {
+    console.error(
+      "Unable to load profile tasks:",
+      error
+    );
+  }
+};
+
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
 
@@ -384,6 +406,61 @@ export default function Profile() {
           </form>
         </div>
       </div>
+
+      {user.role === "employee" && (
+  <div className="mt-8">
+    <h2 className="text-xl font-semibold mb-4">
+      My Assigned Tasks
+    </h2>
+
+    {myTasks.length === 0 ? (
+      <p className="text-muted-foreground">
+        No tasks have been assigned to you.
+      </p>
+    ) : (
+      <div className="space-y-3">
+        {myTasks.map((task) => (
+          <div
+            key={task.id}
+            className="border rounded-xl p-4"
+          >
+            <div className="flex justify-between">
+              <h3 className="font-semibold">
+                {task.title}
+              </h3>
+
+              <span>
+                {task.status}
+              </span>
+            </div>
+
+            <p className="text-sm mt-2">
+              {task.description}
+            </p>
+
+            <div className="text-sm text-muted-foreground mt-3">
+              Priority: {task.priority}
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              Assigned by:{" "}
+              {task.assigner?.name || "Manager"}
+            </div>
+
+            {task.dueDate && (
+              <div className="text-sm text-muted-foreground">
+                Due:{" "}
+                {new Date(
+                  task.dueDate
+                ).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
     </div>
   );
 }

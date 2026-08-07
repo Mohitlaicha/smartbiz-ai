@@ -1,6 +1,32 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 
+
+// Admin/Manager - get active employee accounts
+exports.getEmployeeUsers = async (req, res) => {
+  try {
+    const employees = await User.findAll({
+      where: {
+        role: "employee",
+        status: "active",
+      },
+      attributes: [
+        "id",
+        "name",
+        "email",
+      ],
+      order: [["name", "ASC"]],
+    });
+
+    return res.status(200).json(employees);
+  } catch (error) {
+    console.error("Get employee users error:", error);
+
+    return res.status(500).json({
+      message: "Unable to load employees",
+    });
+  }
+};
 exports.getUsers = async (req, res) => {
   try {
     const users = await User.findAll({

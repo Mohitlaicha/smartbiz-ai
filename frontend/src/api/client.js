@@ -55,6 +55,23 @@ export const profileAPI = {
 };
 
 export const businessAPI = {
+getAllTasks: () =>
+  api.get("/tasks"),
+
+getMyTasks: () =>
+  api.get("/tasks/my"),
+
+createTask: (data) =>
+  api.post("/tasks", data),
+
+updateMyTaskStatus: (id, status) =>
+  api.put(`/tasks/my/${id}/status`, {
+    status,
+  }),
+
+getEmployeeUsers: () =>
+  api.get("/users/employees"),
+
   getDashboard: () => api.get("/dashboard"),
 
   getProducts: () => api.get("/products"),

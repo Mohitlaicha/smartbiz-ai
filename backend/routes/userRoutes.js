@@ -21,4 +21,16 @@ router.post("/", createUser);
 router.put("/:id/role", updateUserRole);
 router.put("/:id/status", updateUserStatus);
 
+const {
+  getEmployeeUsers,
+} = require("../controllers/userController");
+
+router.get(
+  "/employees",
+  protect,
+  allowRoles("admin", "manager"),
+  getEmployeeUsers
+);
+
+
 module.exports = router;
