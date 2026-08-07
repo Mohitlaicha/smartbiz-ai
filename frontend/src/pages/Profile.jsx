@@ -7,7 +7,7 @@ import {
   Calendar,
 } from "lucide-react";
 
-import { useAuth } from "@/AuthContext";
+
 import {
   profileAPI,
   businessAPI,
@@ -20,7 +20,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
 export default function Profile() {
-  const { user } = useAuth();
+ const user = JSON.parse(
+  localStorage.getItem("user") || "{}"
+);
 
   const [profileForm, setProfileForm] = useState({
     name: "",
