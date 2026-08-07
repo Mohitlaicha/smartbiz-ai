@@ -1,59 +1,83 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
-
+const { Op } = require("sequelize");
 exports.createTask = async (req, res) => {
   try {
     const {
       title,
       description,
       priority,
-      dueDate,
+      status,
+      due_date,
+      category,
       assignedTo,
     } = req.body;
 
-    if (!title || !assignedTo) {
+    if (!title) {
       return res.status(400).json({
-        message: "Title and employee are required",
+        message: "Task title is required",
       });
     }
 
-    const employee = await User.findOne({
-      where: {
-        id: assignedTo,
-        role: "employee",
-        status: "active",
-      },
-    });
+    let employeeId = null;
 
-    if (!employee) {
-      return res.status(404).json({
-        message: "Employee not found",
+    // If an individual employee was selected
+    if (
+      assignedTo !== null &&
+      assignedTo !== undefined &&
+      assignedTo !== "" &&
+      assignedTo !== "all"
+    ) {
+      employeeId = Number(assignedTo);
+
+      const employee = await User.findOne({
+        where: {
+          id: employeeId,
+          role: "employee",
+          status: "active",
+        },
       });
+
+      if (!employee) {
+        return res.status(404).json({
+          message: "Employee not found",
+        });
+      }
     }
 
     const task = await Task.create({
       title,
       description,
-      priority,
-      dueDate,
-      assignedTo,
+      priority: priority || "medium",
+      status: status || "todo",
+      due_date: due_date || null,
+      category: category || "other",
+
+      // null means ALL employees
+      assignedTo: employeeId,
+
       assignedBy: req.user.id,
-      status: "pending",
     });
 
     return res.status(201).json({
-      message: "Task assigned successfully",
+      message:
+        employeeId === null
+          ? "Task assigned to all employees"
+          : "Task assigned successfully",
+
       task,
     });
   } catch (error) {
-    console.error("Create task error:", error);
+    console.error(
+      "Create task error:",
+      error
+    );
 
     return res.status(500).json({
-      message: "Unable to assign task",
+      message: "Unable to create task",
     });
   }
 };
-
 exports.getTasks = async (req, res) => {
   try {
     const tasks = await Task.findAll({
@@ -85,30 +109,57 @@ exports.getMyTasks = async (req, res) => {
   try {
     const tasks = await Task.findAll({
       where: {
-        assignedTo: req.user.id,
+        [Op.or]: [
+          // specifically assigned to logged-in employee
+          {
+            assignedTo: req.user.id,
+          },
+
+          // assigned to everybody
+          {
+            assignedTo: null,
+          },
+        ],
       },
 
       include: [
         {
           model: User,
           as: "assigner",
-          attributes: ["id", "name"],
+          attributes: [
+            "id",
+            "name",
+          ],
+        },
+        {
+          model: User,
+          as: "assignee",
+          attributes: [
+            "id",
+            "name",
+            "email",
+          ],
+          required: false,
         },
       ],
 
-      order: [["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "DESC"],
+      ],
     });
 
     return res.json(tasks);
   } catch (error) {
-    console.error("My tasks error:", error);
+    console.error(
+      "Get my tasks error:",
+      error
+    );
 
     return res.status(500).json({
-      message: "Unable to load your tasks",
+      message: "Unable to load tasks",
     });
   }
 };
-
 exports.updateMyTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -127,13 +178,20 @@ exports.updateMyTaskStatus = async (req, res) => {
       });
     }
 
-    const task = await Task.findOne({
-      where: {
-        id: id,
+   const task = await Task.findOne({
+  where: {
+    id,
+
+    [Op.or]: [
+      {
         assignedTo: req.user.id,
       },
-    });
-
+      {
+        assignedTo: null,
+      },
+    ],
+  },
+});
     if (!task) {
       return res.status(404).json({
         message: "Task not found or not assigned to you",

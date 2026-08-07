@@ -46,7 +46,8 @@ const initialForm = {
   priority: "medium",
   due_date: "",
   category: "other",
-  assignedTo: "",
+
+  assignedTo: "all",
 };
 export default function Tasks() {
   const [search, setSearch] = useState('');
@@ -174,7 +175,10 @@ const createMutation = useMutation({
       priority: form.priority,
       due_date: form.due_date || null,
       category: form.category,
-      assignedTo: Number(form.assignedTo),
+      assignedTo:
+  form.assignedTo === "all"
+    ? null
+    : Number(form.assignedTo),
     });
   }
 };
@@ -254,9 +258,12 @@ const getTaskId = (task) => task.id || task._id;
                       <div className={cn("w-3 h-3 rounded-full flex-shrink-0 mt-1", priority.dotColor)} />
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <p className={cn("font-medium break-words", task.status === 'done' && "line-through text-muted-foreground")}>{task.title}</p>
-                        {isManagerOrAdmin && task.assignee && (
+                        {isManagerOrAdmin && (
   <p className="text-sm text-muted-foreground mt-1">
-    Assigned to: {task.assignee.name}
+    Assigned to:{" "}
+    {task.assignee
+      ? task.assignee.name
+      : "All Employees"}
   </p>
 )}
 
@@ -423,6 +430,9 @@ const getTaskId = (task) => task.id || task._id;
       </SelectTrigger>
 
       <SelectContent>
+        <SelectItem value="all">
+  All Employees
+</SelectItem>
         {employeeUsers.map((employee) => (
           <SelectItem
             key={employee.id}
